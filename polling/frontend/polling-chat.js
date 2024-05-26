@@ -34,16 +34,23 @@ async function postNewMsg(user, text) {
 }
 
 async function getNewMsgs() {
-  let json;
   try {
     const res = await fetch("/poll");
-    json = await res.json();
+    const json = await res.json();
+
+    if (res.status >= 400) {
+      throw new Error("bad response from server");
+    }
+
+    allChat = json.msg;
+    render();
+    failedTries = 0;
   } catch (e) {
-    console.error(e);
+    failedTries++;
+    // console.error(e);
   }
 
-  allChat = json.msg;
-  render();
+  
   // setTimeout(getNewMsgs, INTERVAL);
 }
 
@@ -63,10 +70,13 @@ const template = (user, msg) =>
 // make the first request
 // getNewMsgs();
 let timeToMakeNextRequest = 0;
-function requestAnimationFrameTimer(time) {
+let failedTries = 0;
+let BACKOFF = 5000;
+async function requestAnimationFrameTimer(time) {
   if (timeToMakeNextRequest <= time) {
-    getNewMsgs();
-    timeToMakeNextRequest = document.timeline.currentTime + INTERVAL;
+    await getNewMsgs();
+    timeToMakeNextRequest = document.timeline.currentTime + INTERVAL + failedTries * BACKOFF;
+    console.log(failedTries * BACKOFF);
   }
   requestAnimationFrame(requestAnimationFrameTimer);
 }
